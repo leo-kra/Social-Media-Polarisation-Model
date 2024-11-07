@@ -115,10 +115,10 @@ to record-polarization
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-853
-298
-943
-389
+796
+85
+1233
+523
 -1
 -1
 2.5
