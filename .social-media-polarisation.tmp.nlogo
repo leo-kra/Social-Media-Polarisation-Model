@@ -1,127 +1,13 @@
-globals [
-  tick-count            ; Keeps track of the number of ticks
-  spread-list           ; List to store spread over time
-  dispersion-list       ; List to store dispersion over time
-  coverage-list         ; List to store coverage over time
-  spread                ; Current spread calculation
-  dispersion            ; Current dispersion calculation
-  coverage              ; Current coverage calculation
-]
 
-turtles-own [
-  opinion               ; The agent's opinion, ranging from 0 to 1
-  opinion-difference    ; Temporary variable to store opinion difference
-]
-
-; Setup procedure
-to setup
-  clear-all
-  set-default-shape turtles "circle"
-  create-turtles num-agents [
-    setxy random-xcor random-ycor
-    set opinion random-float 1
-    set color scale-color blue opinion 0 1
-    set size 1.5
-  ]
-  ; Initialize global variables
-  set tick-count 0
-  set spread-list []
-  set dispersion-list []
-  set coverage-list []
-  set spread 0
-  set dispersion 0
-  set coverage 0
-
-  ; Setup plot with specific number of bins for the histogram
-  set-current-plot "Opinion Distribution"
-  set-histogram-num-bars 20  ; Adjust this number to change the bin size
-
-  reset-ticks
-end
-
-; Go procedure
-to go
-  if ticks >= max-ticks [ stop ]
-  ; Select a random receiver
-  let receiver one-of turtles
-  ; Determine bubble size (as a number of agents)
-  let bubble-size-proportion bubble-size / 100  ; Convert percentage to proportion
-  let num-in-bubble max list 1 round (bubble-size-proportion * (count turtles - 1))
-  ; Exclude the receiver from the list of potential senders
-  let other-turtles turtles with [ self != receiver ]
-  ; Calculate opinion differences for all other turtles
-  ask other-turtles [
-    set opinion-difference abs (opinion - [opinion] of receiver)
-  ]
-  ; Sort other turtles by opinion difference
-  let sorted-turtles sort-by [ [a b] -> [opinion-difference] of a < [opinion-difference] of b ] other-turtles
-  ; Select the bubble (the closest agents in opinion)
-  let bubble-agents sublist sorted-turtles 0 num-in-bubble
-  ; Pick a random sender from the bubble
-  let sender one-of bubble-agents
-  ; Compute opinion difference between sender and receiver
-  let delta ( [opinion] of sender - [opinion] of receiver )
-  ; Compute influence weight
-  let influence-weight (1 - gamma * abs delta)
-  ; Ensure influence-weight is between -1 and 1
-  if influence-weight > 1 [ set influence-weight 1 ]
-  if influence-weight < -1 [ set influence-weight -1 ]
-  ; Update receiver's opinion
-  ask receiver [
-    set opinion opinion + alpha * influence-weight * delta
-    ; Truncate opinion to [0,1]
-    if opinion > 1 [ set opinion 1 ]
-    if opinion < 0 [ set opinion 0 ]
-    ; Update color based on new opinion
-    set color scale-color blue opinion 0 1
-  ]
-  ; Update tick count and record data
-  set tick-count tick-count + 1
-  ; Refresh plots automatically
-  update-plots
-  ; Record polarization measures
-  record-polarization
-  if ticks mod 100 = 0 [
-    show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
-  ]
-  tick
-end
-
-; Procedure to record polarization measures
-to record-polarization
-  ; Get list of opinions
-  let opinions [opinion] of turtles
-  ; Spread: difference between max and min opinions
-  set spread (max opinions) - (min opinions)
-  ; Dispersion: average absolute deviation from mean opinion
-  let mean-opinion mean opinions
-  set dispersion mean map [ x -> abs (x - mean-opinion) ] opinions
-  ; Coverage: proportion of unique opinions over opinion range
-  let unique-opinions remove-duplicates (map [ x -> round (x * 1000) / 1000 ] opinions)
-  set coverage (length unique-opinions) / 1000  ; Assuming opinions are rounded to 3 decimal places
-  ; Store the measures
-  set spread-list lput spread spread-list
-  set dispersion-list lput dispersion dispersion-list
-  set coverage-list lput coverage coverage-list
-  ; Plot the measures
-  set-current-plot "Spread"
-  plot spread
-  set-current-plot "Dispersion"
-  plot dispersion
-  set-current-plot "Coverage"
-  plot coverage
-  set-current-plot "Opinion Distribution"
-  histogram [opinion] of turtles
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
-796
-85
-1233
-523
+1194
+275
+1243
+305
 -1
 -1
-2.5
+1.0
 1
 10
 1
@@ -131,10 +17,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-20
+20
+-10
+10
 0
 0
 1
@@ -142,10 +28,10 @@ ticks
 30.0
 
 BUTTON
-28
-23
-94
-56
+33
+16
+99
+49
 NIL
 setup
 NIL
@@ -159,10 +45,10 @@ NIL
 1
 
 BUTTON
-109
-24
-172
-57
+114
+17
+177
+50
 NIL
 go
 T
@@ -176,70 +62,55 @@ NIL
 1
 
 SLIDER
-25
-70
-197
-103
+29
+124
+201
+157
 num-agents
 num-agents
 10
 1000
-514.0
+205.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-24
-123
-196
-156
-alpha
-alpha
+30
+272
+202
+305
+alpha0
+alpha0
 0
 1
-0.17
+0.18
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-23
-177
-195
-210
-gamma
-gamma
-0
-5
-0.45
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-22
-222
-194
-255
+28
+198
+200
+231
 bubble-size
 bubble-size
 1
 100
-20.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-24
-273
-196
-306
+209
+124
+381
+157
 max-ticks
 max-ticks
 100
@@ -251,10 +122,10 @@ NIL
 HORIZONTAL
 
 PLOT
-223
-427
-434
-577
+432
+479
+643
+629
 Spread
 Ticks
 Spread
@@ -266,13 +137,13 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot spread"
+"default" 1.0 0 -3844592 true "" "plot spread"
 
 PLOT
-442
-270
-649
-420
+651
+322
+858
+472
 Dispersion
 Ticks
 Dispersion
@@ -284,13 +155,13 @@ true
 false
 "" ""
 PENS
-"Dispersion Pen" 1.0 0 -16777216 true "" "plot dispersion"
+"Dispersion Pen" 1.0 0 -3844592 true "" "plot dispersion"
 
 PLOT
-223
-270
-434
-420
+432
+322
+643
+472
 Coverage
 Ticks
 Coverage
@@ -302,13 +173,13 @@ true
 false
 "" ""
 PENS
-"Coverage Pen" 1.0 0 -16777216 true "" "plot coverage"
+"Coverage Pen" 1.0 0 -3844592 true "" "plot coverage"
 
 PLOT
-223
-69
-649
-262
+432
+121
+858
+314
 Opinion Distribution
 Opinion
 Number of Users
@@ -321,6 +192,129 @@ false
 "" ""
 PENS
 "current" 1.0 1 -14439633 true "" "histogram [ opinion ] of turtles"
+
+SLIDER
+210
+199
+382
+232
+num-groups
+num-groups
+2
+10
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+30
+312
+202
+345
+gamma0
+gamma0
+0
+5
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+210
+311
+382
+344
+gamma1
+gamma1
+-5
+5
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+210
+271
+382
+304
+alpha1
+alpha1
+-1
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+652
+480
+860
+525
+Current Spread
+spread
+17
+1
+11
+
+MONITOR
+652
+525
+860
+570
+Current Dispersion
+dispersion
+17
+1
+11
+
+MONITOR
+652
+571
+861
+616
+Current Coverage
+coverage
+17
+1
+11
+
+TEXTBOX
+33
+100
+183
+118
+Model Dynamics
+14
+0.0
+1
+
+TEXTBOX
+32
+252
+243
+272
+Opinion Influence Parameters
+14
+0.0
+1
+
+TEXTBOX
+32
+178
+182
+196
+Simulation Settings
+14
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

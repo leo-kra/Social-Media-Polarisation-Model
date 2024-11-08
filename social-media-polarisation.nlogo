@@ -11,6 +11,7 @@ globals [
 turtles-own [
   opinion               ; The agent's opinion, ranging from 0 to 1
   opinion-difference    ; Temporary variable to store opinion difference
+  group                 ; Group membership
 ]
 
 ; Setup procedure
@@ -18,9 +19,8 @@ to setup
   clear-all
   set-default-shape turtles "circle"
   create-turtles num-agents [
-    setxy random-xcor random-ycor
     set opinion random-float 1
-    set color scale-color blue opinion 0 1
+    set group 1 + random num-groups  ; Assign group from 1 to num-groups
     set size 1.5
   ]
   ; Initialize global variables
@@ -60,15 +60,25 @@ to go
   ; Pick a random sender from the bubble
   let sender one-of bubble-agents
   ; Compute opinion difference between sender and receiver
-  let delta ( [opinion] of sender - [opinion] of receiver )
-  ; Compute influence weight
-  let influence-weight (1 - gamma * abs delta)
-  ; Ensure influence-weight is between -1 and 1
-  if influence-weight > 1 [ set influence-weight 1 ]
-  if influence-weight < -1 [ set influence-weight -1 ]
+  let delta ([opinion] of sender - [opinion] of receiver)
+  let delta_abs abs delta
+  ; Compute group membership indicator
+  let delta_eij 0
+  if [group] of receiver = [group] of sender [
+    set delta_eij 1
+  ]
+  let one_minus_delta_eij 1 - delta_eij
+  ; Compute influence weight w_ijt
+  let w_ijt 1 - gamma0 * delta_abs + gamma1 * one_minus_delta_eij * delta_abs
+  ; Ensure w_ijt is between -1 and 1
+  if w_ijt > 1 [ set w_ijt 1 ]
+  if w_ijt < -1 [ set w_ijt -1 ]
+  ; Compute total alpha
+  let total_alpha alpha0 + alpha1 * one_minus_delta_eij
   ; Update receiver's opinion
+  let delta_opinion total_alpha * w_ijt * delta
   ask receiver [
-    set opinion opinion + alpha * influence-weight * delta
+    set opinion opinion + delta_opinion
     ; Truncate opinion to [0,1]
     if opinion > 1 [ set opinion 1 ]
     if opinion < 0 [ set opinion 0 ]
@@ -77,10 +87,10 @@ to go
   ]
   ; Update tick count and record data
   set tick-count tick-count + 1
-  ; Refresh plots automatically
-  update-plots
   ; Record polarization measures
   record-polarization
+  ; Refresh plots automatically
+  update-plots
   if ticks mod 100 = 0 [
     show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
   ]
@@ -115,13 +125,13 @@ to record-polarization
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-853
-298
-943
-389
+1194
+275
+1243
+305
 -1
 -1
-2.5
+1.0
 1
 10
 1
@@ -131,10 +141,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-20
+20
+-10
+10
 0
 0
 1
@@ -142,10 +152,10 @@ ticks
 30.0
 
 BUTTON
-28
-23
-94
-56
+33
+16
+99
+49
 NIL
 setup
 NIL
@@ -159,10 +169,10 @@ NIL
 1
 
 BUTTON
-109
-24
-172
-57
+114
+17
+177
+50
 NIL
 go
 T
@@ -176,70 +186,55 @@ NIL
 1
 
 SLIDER
-25
-70
-197
-103
+29
+124
+201
+157
 num-agents
 num-agents
 10
 1000
-514.0
+205.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-24
-123
-196
-156
-alpha
-alpha
+30
+272
+202
+305
+alpha0
+alpha0
 0
 1
-0.17
+0.18
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-23
-177
-195
-210
-gamma
-gamma
-0
-5
-0.45
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-22
-222
-194
-255
+28
+198
+200
+231
 bubble-size
 bubble-size
 1
 100
-20.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-24
-273
-196
-306
+209
+124
+381
+157
 max-ticks
 max-ticks
 100
@@ -251,10 +246,10 @@ NIL
 HORIZONTAL
 
 PLOT
-223
-427
-434
-577
+432
+479
+643
+629
 Spread
 Ticks
 Spread
@@ -266,13 +261,13 @@ true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot spread"
+"default" 1.0 0 -3844592 true "" "plot spread"
 
 PLOT
-442
-270
-649
-420
+651
+322
+858
+472
 Dispersion
 Ticks
 Dispersion
@@ -284,13 +279,13 @@ true
 false
 "" ""
 PENS
-"Dispersion Pen" 1.0 0 -16777216 true "" "plot dispersion"
+"Dispersion Pen" 1.0 0 -3844592 true "" "plot dispersion"
 
 PLOT
-223
-270
-434
-420
+432
+322
+643
+472
 Coverage
 Ticks
 Coverage
@@ -302,13 +297,13 @@ true
 false
 "" ""
 PENS
-"Coverage Pen" 1.0 0 -16777216 true "" "plot coverage"
+"Coverage Pen" 1.0 0 -3844592 true "" "plot coverage"
 
 PLOT
-223
-69
-649
-262
+432
+121
+858
+314
 Opinion Distribution
 Opinion
 Number of Users
@@ -321,6 +316,129 @@ false
 "" ""
 PENS
 "current" 1.0 1 -14439633 true "" "histogram [ opinion ] of turtles"
+
+SLIDER
+210
+199
+382
+232
+num-groups
+num-groups
+2
+10
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+30
+312
+202
+345
+gamma0
+gamma0
+0
+5
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+210
+311
+382
+344
+gamma1
+gamma1
+-5
+5
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+210
+271
+382
+304
+alpha1
+alpha1
+-1
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+MONITOR
+652
+480
+860
+525
+Current Spread
+spread
+17
+1
+11
+
+MONITOR
+652
+525
+860
+570
+Current Dispersion
+dispersion
+17
+1
+11
+
+MONITOR
+652
+571
+861
+616
+Current Coverage
+coverage
+17
+1
+11
+
+TEXTBOX
+33
+100
+183
+118
+Model Dynamics
+14
+0.0
+1
+
+TEXTBOX
+32
+252
+243
+272
+Opinion Influence Parameters
+14
+0.0
+1
+
+TEXTBOX
+32
+178
+182
+196
+Simulation Settings
+14
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
