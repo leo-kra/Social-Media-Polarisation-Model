@@ -1,4 +1,132 @@
+globals [
+  tick-count            ; Keeps track of the number of ticks
+  spread-list           ; List to store spread over time
+  dispersion-list       ; List to store dispersion over time
+  coverage-list         ; List to store coverage over time
+  spread                ; Current spread calculation
+  dispersion            ; Current dispersion calculation
+  coverage              ; Current coverage calculation
+]
 
+turtles-own [
+  opinion               ; The agent's opinion, ranging from 0 to 1
+  opinion-difference    ; Temporary variable to store opinion difference
+  group                 ; Group membership
+]
+
+; Setup procedure
+to setup
+  clear-all
+  set-default-shape turtles "circle"
+  create-turtles num-agents [
+    set opinion random-float 1
+    set group 1 + random num-groups  ; Assign group from 1 to num-groups
+    set size 1.5
+  ]
+  ; Initialise global variables
+  set tick-count 0
+  set spread-list []
+  set dispersion-list []
+  set coverage-list []
+  set spread 0
+  set dispersion 0
+  set coverage 0
+
+  ; Setup plot with specific number of bins for the histogram
+  set-current-plot "Opinion Distribution"
+  set-histogram-num-bars 20  ; Adjust this number to change the bin size
+
+  reset-ticks
+end
+
+; Go procedure
+to go
+  if ticks >= max-ticks [ stop ]
+  ; Select a random receiver
+  let receiver one-of turtles
+  ; Determine bubble size (as a number of agents)
+  let bubble-size-proportion bubble-size / 100  ; Convert percentage to proportion
+  let num-in-bubble max list 1 round (bubble-size-proportion * (count turtles - 1)) ; Agents that are within the bubble
+  ; Exclude the receiver from the list of potential senders
+  let other-turtles turtles with [ self != receiver ]
+  ; Calculate opinion differences for all other turtles
+  ask other-turtles [
+    set opinion-difference abs (opinion - [opinion] of receiver)
+  ]
+  ; Sort other turtles by opinion difference
+  let sorted-turtles sort-by [ [a b] -> [opinion-difference] of a < [opinion-difference] of b ] other-turtles
+  ; Select the bubble (the closest agents in opinion)
+  let bubble-agents sublist sorted-turtles 0 num-in-bubble
+  ; Pick a random sender from the bubble
+  let sender one-of bubble-agents
+  ; Compute opinion difference between sender and receiver
+  let delta ([opinion] of sender - [opinion] of receiver)
+  let delta_abs abs delta
+  ; Compute group membership indicator
+  let delta_eij 0
+  if [group] of receiver = [group] of sender [
+    set delta_eij 1
+  ]
+  let one_minus_delta_eij 1 - delta_eij
+  ; Compute influence weight w_ijt
+  let w_ijt 1 - gamma0 * delta_abs + gamma1 * one_minus_delta_eij * delta_abs
+  ; Ensure w_ijt is between -1 and 1
+  if w_ijt > 1 [ set w_ijt 1 ]
+  if w_ijt < -1 [ set w_ijt -1 ]
+  ; Compute total alpha
+  let total_alpha alpha0 + alpha1 * one_minus_delta_eij
+  ; Update receiver's opinion
+  let delta_opinion total_alpha * w_ijt * delta
+  ask receiver [
+    set opinion opinion + delta_opinion
+    ; Truncate opinion to [0,1]
+    if opinion > 1 [ set opinion 1 ]
+    if opinion < 0 [ set opinion 0 ]
+  ]
+  ; Update tick count and record data
+  set tick-count tick-count + 1
+  ; Record polarisation measures
+  record-polarisation
+  ; Refresh plots automatically
+  update-plots
+  if ticks mod 100 = 0 [
+    show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
+  ]
+  tick
+end
+
+; Procedure to record polarisation measures
+to record-polarisation
+  ; Get list of opinions
+  let opinions [opinion] of turtles
+  ; Spread: difference between max and min opinions
+  set spread (max opinions) - (min opinions)
+  ; Dispersion: average absolute deviation from mean opinion
+  let mean-opinion mean opinions
+  set dispersion mean map [ x -> abs (x - mean-opinion) ] opinions
+
+  ; Bucketing opinions into intervals (e.g., 0.0-0.1, 0.1-0.2, ...)
+  let buckets map [x -> floor (x * 0) / 40] opinions  ; Adjust bucket size by changing the multiplier/divisor
+  let unique-buckets remove-duplicates buckets
+
+  ; Coverage calculation adjusted for bucketing
+  set coverage (length unique-buckets) / 40  ; Assuming 40 buckets (0 to 1 in 0.025 increments)
+
+  ; Store the measures
+  set spread-list lput spread spread-list
+  set dispersion-list lput dispersion dispersion-list
+  set coverage-list lput coverage coverage-list
+
+  ; Plot the measures
+  set-current-plot "Spread"
+  plot spread
+  set-current-plot "Dispersion"
+  plot dispersion
+  set-current-plot "Coverage"
+  plot coverage
+  set-current-plot "Opinion Distribution"
+  histogram [opinion] of turtles
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 1194
@@ -70,7 +198,7 @@ num-agents
 num-agents
 10
 1000
-205.0
+401.0
 1
 1
 NIL
@@ -85,7 +213,7 @@ alpha0
 alpha0
 0
 1
-0.18
+0.58
 0.01
 1
 NIL
@@ -100,7 +228,7 @@ bubble-size
 bubble-size
 1
 100
-50.0
+34.0
 1
 1
 NIL
@@ -150,7 +278,7 @@ Dispersion
 0.0
 10.0
 0.0
-1.0
+0.5
 true
 false
 "" ""
@@ -202,7 +330,7 @@ num-groups
 num-groups
 2
 10
-10.0
+6.0
 1
 1
 NIL
@@ -217,7 +345,7 @@ gamma0
 gamma0
 0
 5
-1.0
+2.32
 0.01
 1
 NIL
@@ -232,7 +360,7 @@ gamma1
 gamma1
 -5
 5
-0.0
+0.48
 0.01
 1
 NIL
@@ -247,7 +375,7 @@ alpha1
 alpha1
 -1
 1
-0.0
+0.31
 0.01
 1
 NIL

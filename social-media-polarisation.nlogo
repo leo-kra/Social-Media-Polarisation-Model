@@ -23,7 +23,7 @@ to setup
     set group 1 + random num-groups  ; Assign group from 1 to num-groups
     set size 1.5
   ]
-  ; Initialize global variables
+  ; Initialise global variables
   set tick-count 0
   set spread-list []
   set dispersion-list []
@@ -46,7 +46,7 @@ to go
   let receiver one-of turtles
   ; Determine bubble size (as a number of agents)
   let bubble-size-proportion bubble-size / 100  ; Convert percentage to proportion
-  let num-in-bubble max list 1 round (bubble-size-proportion * (count turtles - 1))
+  let num-in-bubble max list 1 round (bubble-size-proportion * (count turtles - 1)) ; Agents that are within the bubble
   ; Exclude the receiver from the list of potential senders
   let other-turtles turtles with [ self != receiver ]
   ; Calculate opinion differences for all other turtles
@@ -82,13 +82,11 @@ to go
     ; Truncate opinion to [0,1]
     if opinion > 1 [ set opinion 1 ]
     if opinion < 0 [ set opinion 0 ]
-    ; Update color based on new opinion
-    set color scale-color blue opinion 0 1
   ]
   ; Update tick count and record data
   set tick-count tick-count + 1
-  ; Record polarization measures
-  record-polarization
+  ; Record polarisation measures
+  record-polarisation
   ; Refresh plots automatically
   update-plots
   if ticks mod 100 = 0 [
@@ -97,8 +95,8 @@ to go
   tick
 end
 
-; Procedure to record polarization measures
-to record-polarization
+; Procedure to record polarisation measures
+to record-polarisation
   ; Get list of opinions
   let opinions [opinion] of turtles
   ; Spread: difference between max and min opinions
@@ -106,13 +104,19 @@ to record-polarization
   ; Dispersion: average absolute deviation from mean opinion
   let mean-opinion mean opinions
   set dispersion mean map [ x -> abs (x - mean-opinion) ] opinions
-  ; Coverage: proportion of unique opinions over opinion range
-  let unique-opinions remove-duplicates (map [ x -> round (x * 1000) / 1000 ] opinions)
-  set coverage (length unique-opinions) / 1000  ; Assuming opinions are rounded to 3 decimal places
+
+  ; Bucketing opinions into intervals (e.g., 0.0-0.1, 0.1-0.2, ...)
+  let buckets map [x -> floor (x * 100) / 100] opinions  ; Adjust bucket size by changing the multiplier/divisor
+  let unique-buckets remove-duplicates buckets
+
+  ; Coverage calculation adjusted for bucketing
+  set coverage (length unique-buckets) / 100  ; Assuming 100 buckets (0 to 1 in 0.01 increments)
+
   ; Store the measures
   set spread-list lput spread spread-list
   set dispersion-list lput dispersion dispersion-list
   set coverage-list lput coverage coverage-list
+
   ; Plot the measures
   set-current-plot "Spread"
   plot spread
@@ -194,7 +198,7 @@ num-agents
 num-agents
 10
 1000
-205.0
+332.0
 1
 1
 NIL
@@ -209,7 +213,7 @@ alpha0
 alpha0
 0
 1
-0.18
+0.58
 0.01
 1
 NIL
@@ -224,7 +228,7 @@ bubble-size
 bubble-size
 1
 100
-50.0
+28.0
 1
 1
 NIL
@@ -239,7 +243,7 @@ max-ticks
 max-ticks
 100
 100000
-100000.0
+17280.0
 10
 1
 NIL
@@ -274,7 +278,7 @@ Dispersion
 0.0
 10.0
 0.0
-1.0
+0.5
 true
 false
 "" ""
@@ -326,7 +330,7 @@ num-groups
 num-groups
 2
 10
-10.0
+6.0
 1
 1
 NIL
@@ -341,7 +345,7 @@ gamma0
 gamma0
 0
 5
-1.0
+2.32
 0.01
 1
 NIL
@@ -356,7 +360,7 @@ gamma1
 gamma1
 -5
 5
-0.0
+0.48
 0.01
 1
 NIL
@@ -371,7 +375,7 @@ alpha1
 alpha1
 -1
 1
-0.0
+0.31
 0.01
 1
 NIL
