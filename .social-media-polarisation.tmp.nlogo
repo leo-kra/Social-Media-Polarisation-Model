@@ -11,18 +11,69 @@ globals [
 turtles-own [
   opinion               ; The agent's opinion, ranging from 0 to 1
   opinion-difference    ; Temporary variable to store opinion difference
-  group                 ; Group membership
+  group-strengths       ; List of group strengths
 ]
 
 ; Setup procedure
 to setup
+  ; Error checks
+  if avg-num-groups-per-agent > num-groups [
+    user-message "Error: avg-num-groups-per-agent cannot be greater than num-groups."
+    stop
+  ]
+  if avg-num-groups-per-agent < 1 [
+    user-message "Error: avg-num-groups-per-agent must be at least 1."
+    stop
+  ]
+  if sd-num-groups-per-agent < 0 [
+    user-message "Error: sd-num-groups-per-agent must be non-negative."
+    stop
+  ]
+  if sd-num-groups-per-agent > (num-groups / 2) [
+    user-message "Error: sd-num-groups-per-agent must be less than or equal to num-groups divided by 2."
+    stop
+  ]
+
   clear-all
-  set-default-shape turtles "circle"
   create-turtles num-agents [
     set opinion random-float 1
-    set group 1 + random num-groups  ; Assign group from 1 to num-groups
+    ; Initialise group-strengths
+    set group-strengths n-values num-groups [ 0 ]
+
+    ; Agent can belong to multiple groups
+    ifelse multiple-group-membership? [
+      ; Sample num-groups-per-agent from a normal distribution
+      let num-groups-per-agent round random-normal avg-num-groups-per-agent sd-num-groups-per-agent
+      ; Ensure num-groups-per-agent is within 1 and num-groups
+      set num-groups-per-agent max list 1 min list num-groups num-groups-per-agent
+      ; Select num-groups-per-agent unique group IDs
+      let group-ids n-of num-groups-per-agent n-values num-groups [ [i] -> i + 1 ]
+      foreach group-ids [
+        id ->  ; 'id' represents each group ID
+        let index (id - 1)  ; Adjust to zero-based index
+        ifelse binary-group-membership? [
+          ; Assign strength of 1
+          set group-strengths replace-item index group-strengths 1
+        ][
+          ; Assign random strength between 0 and 1
+          set group-strengths replace-item index group-strengths random-float 1
+        ]
+      ]
+    ][
+      ; Agent belongs to only one group
+      let group-id 1 + random num-groups
+      let index (group-id - 1)
+      ifelse binary-group-membership? [
+        ; Assign strength of 1
+        set group-strengths replace-item index group-strengths 1
+      ][
+        ; Assign random strength between 0 and 1
+        set group-strengths replace-item index group-strengths random-float 1
+      ]
+    ]
     set size 1.5
   ]
+
   ; Initialise global variables
   set tick-count 0
   set spread-list []
@@ -54,7 +105,7 @@ to go
     set opinion-difference abs (opinion - [opinion] of receiver)
   ]
   ; Sort other turtles by opinion difference
-  let sorted-turtles sort-by [ [a b] -> [opinion-difference] of a < [opinion-difference] of b ] other-turtles
+  let sorted-turtles sort-by [[a b] -> [opinion-difference] of a < [opinion-difference] of b ] other-turtles
   ; Select the bubble (the closest agents in opinion)
   let bubble-agents sublist sorted-turtles 0 num-in-bubble
   ; Pick a random sender from the bubble
@@ -62,19 +113,18 @@ to go
   ; Compute opinion difference between sender and receiver
   let delta ([opinion] of sender - [opinion] of receiver)
   let delta_abs abs delta
-  ; Compute group membership indicator
-  let delta_eij 0
-  if [group] of receiver = [group] of sender [
-    set delta_eij 1
-  ]
+  ; Compute group similarity delta_eij
+  let delta_eij group-similarity receiver sender
   let one_minus_delta_eij 1 - delta_eij
   ; Compute influence weight w_ijt
   let w_ijt 1 - gamma0 * delta_abs + gamma1 * one_minus_delta_eij * delta_abs
   ; Ensure w_ijt is between -1 and 1
   if w_ijt > 1 [ set w_ijt 1 ]
   if w_ijt < -1 [ set w_ijt -1 ]
+  ; Compute s_i
+  let s_i mean [ group-strengths ] of receiver
   ; Compute total alpha
-  let total_alpha alpha0 + alpha1 * one_minus_delta_eij
+  let total_alpha alpha0 + alpha1 * delta_eij + alpha2 * s_i
   ; Update receiver's opinion
   let delta_opinion total_alpha * w_ijt * delta
   ask receiver [
@@ -95,6 +145,22 @@ to go
   tick
 end
 
+; Procedure to compute group similarity between two agents
+to-report group-similarity [ t1 t2 ]
+  let gs1 [ group-strengths ] of t1
+  let gs2 [ group-strengths ] of t2
+  let n length gs1
+  let total 0
+  let i 0
+  while [ i < n ] [
+    let s1 item i gs1
+    let s2 item i gs2
+    set total total + (s1 * s2) ; We use the dot product to measure similarity
+    set i i + 1
+  ]
+  report total / n
+end
+
 ; Procedure to record polarisation measures
 to record-polarisation
   ; Get list of opinions
@@ -106,11 +172,11 @@ to record-polarisation
   set dispersion mean map [ x -> abs (x - mean-opinion) ] opinions
 
   ; Bucketing opinions into intervals (e.g., 0.0-0.1, 0.1-0.2, ...)
-  let buckets map [x -> floor (x * 0) / 40] opinions  ; Adjust bucket size by changing the multiplier/divisor
+  let buckets map [x -> floor (x * 100) / 100] opinions  ; Adjust bucket size by changing the multiplier/divisor
   let unique-buckets remove-duplicates buckets
 
   ; Coverage calculation adjusted for bucketing
-  set coverage (length unique-buckets) / 40  ; Assuming 40 buckets (0 to 1 in 0.025 increments)
+  set coverage (length unique-buckets) / 100  ; Assuming 100 buckets (0 to 1 in 0.01 increments)
 
   ; Store the measures
   set spread-list lput spread spread-list
@@ -192,23 +258,23 @@ NIL
 SLIDER
 29
 124
-201
+257
 157
 num-agents
 num-agents
 10
 1000
-401.0
+313.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-30
-272
-202
-305
+27
+352
+258
+385
 alpha0
 alpha0
 0
@@ -222,38 +288,38 @@ HORIZONTAL
 SLIDER
 28
 198
-200
+257
 231
 bubble-size
 bubble-size
 1
 100
-34.0
+10.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-209
+263
 124
-381
+492
 157
 max-ticks
 max-ticks
 100
 100000
-100000.0
+17920.0
 10
 1
 NIL
 HORIZONTAL
 
 PLOT
-432
-479
-643
-629
+543
+476
+754
+626
 Spread
 Ticks
 Spread
@@ -268,10 +334,10 @@ PENS
 "default" 1.0 0 -3844592 true "" "plot spread"
 
 PLOT
-651
-322
-858
-472
+762
+319
+969
+469
 Dispersion
 Ticks
 Dispersion
@@ -286,10 +352,10 @@ PENS
 "Dispersion Pen" 1.0 0 -3844592 true "" "plot dispersion"
 
 PLOT
-432
-322
-643
-472
+543
+319
+754
+469
 Coverage
 Ticks
 Coverage
@@ -304,10 +370,10 @@ PENS
 "Coverage Pen" 1.0 0 -3844592 true "" "plot coverage"
 
 PLOT
-432
-121
-858
-314
+543
+118
+969
+311
 Opinion Distribution
 Opinion
 Number of Users
@@ -322,25 +388,25 @@ PENS
 "current" 1.0 1 -14439633 true "" "histogram [ opinion ] of turtles"
 
 SLIDER
-210
-199
-382
-232
+263
+197
+490
+230
 num-groups
 num-groups
 2
 10
-6.0
+8.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-30
-312
-202
-345
+27
+392
+258
+425
 gamma0
 gamma0
 0
@@ -352,40 +418,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-210
-311
-382
-344
+265
+390
+437
+423
 gamma1
 gamma1
 -5
 5
-0.48
+0.49
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-210
-271
-382
-304
+265
+350
+493
+383
 alpha1
 alpha1
 -1
 1
-0.31
+1.0
 0.01
 1
 NIL
 HORIZONTAL
 
 MONITOR
-652
-480
-860
-525
+763
+477
+971
+522
 Current Spread
 spread
 17
@@ -393,10 +459,10 @@ spread
 11
 
 MONITOR
-652
-525
-860
-570
+763
+522
+971
+567
 Current Dispersion
 dispersion
 17
@@ -404,10 +470,10 @@ dispersion
 11
 
 MONITOR
-652
-571
-861
-616
+763
+568
+972
+613
 Current Coverage
 coverage
 17
@@ -425,10 +491,10 @@ Model Dynamics
 1
 
 TEXTBOX
-32
-252
-243
-272
+29
+332
+240
+352
 Opinion Influence Parameters
 14
 0.0
@@ -443,6 +509,73 @@ Simulation Settings
 14
 0.0
 1
+
+SWITCH
+28
+237
+256
+270
+multiple-group-membership?
+multiple-group-membership?
+1
+1
+-1000
+
+SWITCH
+264
+237
+492
+270
+binary-group-membership?
+binary-group-membership?
+0
+1
+-1000
+
+SLIDER
+28
+276
+255
+309
+avg-num-groups-per-agent
+avg-num-groups-per-agent
+1
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+26
+431
+259
+464
+alpha2
+alpha2
+0
+1
+0.5
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+263
+276
+493
+309
+sd-num-groups-per-agent
+sd-num-groups-per-agent
+1
+5
+1.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
