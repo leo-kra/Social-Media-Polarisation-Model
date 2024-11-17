@@ -6,6 +6,8 @@ globals [
   spread                ; Current spread calculation
   dispersion            ; Current dispersion calculation
   coverage              ; Current coverage calculation
+  total-births          ; Total number of births
+  total-deaths          ; Total number of deaths
 ]
 
 turtles-own [
@@ -82,6 +84,8 @@ to setup
   set spread 0
   set dispersion 0
   set coverage 0
+  set total-births 0
+  set total-deaths 0
 
   ; Setup plot with specific number of bins for the histogram
   set-current-plot "Opinion Distribution"
@@ -133,12 +137,38 @@ to go
     if opinion > 1 [ set opinion 1 ]
     if opinion < 0 [ set opinion 0 ]
   ]
+  ; Handle agent birth
+  if random-float 1 < birth-rate [
+    create-turtles 1 [
+      set opinion random-float 1
+      set group-strengths n-values num-groups [ 0 ]
+      ; ...initialize other properties as in setup...
+      set size 1.5
+    ]
+    set total-births total-births + 1
+  ]
+
+  ; Handle agent death
+  ask turtles [
+    if random-float 1 < death-rate [
+      die
+      set total-deaths total-deaths + 1
+    ]
+  ]
   ; Update tick count and record data
   set tick-count tick-count + 1
   ; Record polarisation measures
   record-polarisation
   ; Refresh plots automatically
   update-plots
+  ; Plot population size, births, and deaths
+  set-current-plot "Population Size"
+  plot count turtles
+  set-current-plot "Total Births"
+  plot total-births
+  set-current-plot "Total Deaths"
+  plot total-deaths
+
   if ticks mod 100 = 0 [
     show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
   ]
@@ -577,6 +607,89 @@ sd-num-groups-per-agent
 NIL
 HORIZONTAL
 
+SLIDER
+27
+470
+258
+503
+birth-rate
+birth-rate
+0
+0.1
+0.01
+0.001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+263
+470
+493
+503
+death-rate
+death-rate
+0
+0.1
+0.01
+0.001
+1
+NIL
+HORIZONTAL
+
+PLOT
+543
+650
+754
+800
+Population Size
+Ticks
+Population Size
+0.0
+10.0
+0.0
+1000.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -3844592 true "" "plot count turtles"
+
+PLOT
+762
+650
+969
+800
+Total Births
+Ticks
+Total Births
+0.0
+10.0
+0.0
+1000.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -3844592 true "" "plot total-births"
+
+PLOT
+543
+820
+754
+970
+Total Deaths
+Ticks
+Total Deaths
+0.0
+10.0
+0.0
+1000.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -3844592 true "" "plot total-deaths"
 @#$#@#$#@
 ## WHAT IS IT?
 
