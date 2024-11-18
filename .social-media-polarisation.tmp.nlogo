@@ -8,12 +8,15 @@ globals [
   coverage              ; Current coverage calculation
   total-births          ; Total number of births
   total-deaths          ; Total number of deaths
+  births-this-ageing    ; Births during the current ageing interval
+  deaths-this-ageing    ; Deaths during the current ageing interval
 ]
 
 turtles-own [
   opinion               ; The agent's opinion, ranging from 0 to 1
   opinion-difference    ; Temporary variable to store opinion difference
   group-strengths       ; List of group strengths
+  age                   ; Age of the agent
 ]
 
 ; Setup procedure
@@ -35,48 +38,24 @@ to setup
     user-message "Error: sd-num-groups-per-agent must be less than or equal to num-groups divided by 2."
     stop
   ]
-
-  clear-all
-  create-turtles num-agents [
-    set opinion random-float 1
-    ; Initialise group-strengths
-    set group-strengths n-values num-groups [ 0 ]
-
-    ; Agent can belong to multiple groups
-    ifelse multiple-group-membership? [
-      ; Sample num-groups-per-agent from a normal distribution
-      let num-groups-per-agent round random-normal avg-num-groups-per-agent sd-num-groups-per-agent
-      ; Ensure num-groups-per-agent is within 1 and num-groups
-      set num-groups-per-agent max list 1 min list num-groups num-groups-per-agent
-      ; Select num-groups-per-agent unique group IDs
-      let group-ids n-of num-groups-per-agent n-values num-groups [ [i] -> i + 1 ]
-      foreach group-ids [
-        id ->  ; 'id' represents each group ID
-        let index (id - 1)  ; Adjust to zero-based index
-        ifelse binary-group-membership? [
-          ; Assign strength of 1
-          set group-strengths replace-item index group-strengths 1
-        ][
-          ; Assign random strength between 0 and 1
-          set group-strengths replace-item index group-strengths random-float 1
-        ]
-      ]
-    ][
-      ; Agent belongs to only one group
-      let group-id 1 + random num-groups
-      let index (group-id - 1)
-      ifelse binary-group-membership? [
-        ; Assign strength of 1
-        set group-strengths replace-item index group-strengths 1
-      ][
-        ; Assign random strength between 0 and 1
-        set group-strengths replace-item index group-strengths random-float 1
-      ]
-    ]
-    set size 1.5
+  if carrying-capacity < num-agents [
+    user-message "Error: carrying-capacity must be greater than or equal to num-agents."
+    stop
   ]
 
-  ; Initialise global variables
+  clear-all
+
+  ; Initialise total births and deaths
+  set total-births 0
+  set total-deaths 0
+  set births-this-ageing 0
+  set deaths-this-ageing 0
+
+  create-turtles num-agents [
+    initialize-turtle false  ; False because it's setup
+  ]
+
+  ; Initialize global variables
   set tick-count 0
   set spread-list []
   set dispersion-list []
@@ -84,8 +63,6 @@ to setup
   set spread 0
   set dispersion 0
   set coverage 0
-  set total-births 0
-  set total-deaths 0
 
   ; Setup plot with specific number of bins for the histogram
   set-current-plot "Opinion Distribution"
@@ -94,9 +71,106 @@ to setup
   reset-ticks
 end
 
+; Procedure to initialize a turtle (used in setup and when new turtles are born)
+; @param is_birth: boolean flag, true if called during birth, false if called during setup
+to initialize-turtle [is_birth]
+  ifelse is_birth [
+    set age 0  ; Newborn turtles start at age 0
+    ; Inherit opinion from a random existing turtle with slight noise
+    if any? turtles [
+      set opinion [opinion] of one-of turtles + random-float 0.05 - 0.025  ; Adds a small noise between +/-0.025
+      ; Ensure opinion remains within [0,1]
+      if opinion > 1 [ set opinion 1 ]
+      if opinion < 0 [ set opinion 0 ]
+    ]
+    ; If no existing turtles, assign random opinion
+    if not any? turtles [
+      set opinion random-float 1
+    ]
+  ][
+    ; Initialize age from a uniform distribution between 0 and max-age
+    set age round (random-float max-age)
+    ; Initialize opinion randomly for initial population
+    set opinion random-float 1
+  ]
+
+  ; Initialize group-strengths
+  set group-strengths n-values num-groups [ 0 ]
+
+  ifelse multiple-group-membership? [
+    ; Sample num-groups-per-agent from a normal distribution
+    let num-groups-per-agent round random-normal avg-num-groups-per-agent sd-num-groups-per-agent
+    ; Ensure num-groups-per-agent is within 1 and num-groups
+    set num-groups-per-agent max list 1 min list num-groups num-groups-per-agent
+    ; Select num-groups-per-agent unique group IDs
+    let group-ids n-of num-groups-per-agent n-values num-groups [ [i] -> i + 1 ]
+    foreach group-ids [
+      id ->  ; 'id' represents each group ID
+      let index (id - 1)  ; Adjust to zero-based index
+      ifelse binary-group-membership? [
+        ; Assign strength of 1
+        set group-strengths replace-item index group-strengths 1
+      ][
+        ; Assign random strength between 0 and 1
+        set group-strengths replace-item index group-strengths random-float 1
+      ]
+    ]
+  ][
+    ; Agent belongs to only one group
+    let group-id 1 + random num-groups
+    let index (group-id - 1)
+    ifelse binary-group-membership? [
+      ; Assign strength of 1
+      set group-strengths replace-item index group-strengths 1
+    ][
+      ; Assign random strength between 0 and 1
+      set group-strengths replace-item index group-strengths random-float 1
+    ]
+  ]
+  set size 1.5
+end
+
 ; Go procedure
 to go
   if ticks >= max-ticks [ stop ]
+
+  ; Agent interactions occur every tick
+  agent-interactions
+
+  ; Ageing occurs every 'ageing-interval' ticks
+  if (ticks mod ageing-interval = 0) [
+    agent-ageing
+
+    ; Plot births and deaths at this ageing interval
+    set-current-plot "Births and Deaths"
+    set-current-plot-pen "Births"
+    plot births-this-ageing
+    set-current-plot-pen "Deaths"
+    plot deaths-this-ageing
+  ]
+
+  ; Update tick count and record data
+  set tick-count tick-count + 1
+
+  ; Record polarisation measures
+  record-polarisation
+
+  ; Refresh plots automatically
+  update-plots
+
+  ; Plot population size
+  set-current-plot "Population Size"
+  plot count turtles
+
+  if ticks mod 100 = 0 [
+    show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
+  ]
+
+  tick
+end
+
+; Procedure for agent interactions
+to agent-interactions
   ; Select a random receiver
   let receiver one-of turtles
   ; Determine bubble size (as a number of agents)
@@ -137,42 +211,64 @@ to go
     if opinion > 1 [ set opinion 1 ]
     if opinion < 0 [ set opinion 0 ]
   ]
-  ; Handle agent birth
-  if random-float 1 < birth-rate [
-    create-turtles 1 [
-      set opinion random-float 1
-      set group-strengths n-values num-groups [ 0 ]
-      ; ...initialize other properties as in setup...
-      set size 1.5
-    ]
-    set total-births total-births + 1
-  ]
+end
 
-  ; Handle agent death
+; Procedure for agent ageing
+to agent-ageing
+  ; Reset births and deaths counters for this ageing interval
+  set births-this-ageing 0
+  set deaths-this-ageing 0
+
+  ; Age increment and adjustments
   ask turtles [
-    if random-float 1 < death-rate [
-      die
+    set age age + 1
+
+    ; Check if the agent has reached max-age and remove if so
+    ifelse age >= max-age [
       set total-deaths total-deaths + 1
+      set deaths-this-ageing deaths-this-ageing + 1
+      die
+    ][
+      ; Adjust group strengths towards 1
+      set group-strengths map [ s -> s + (1 - s) * group-strength-increase ] group-strengths
+      ; Ensure group strengths are between 0 and 1
+      set group-strengths map [ s -> min list s 1 ] group-strengths
+      ; Adjust opinion towards extremes based on its current value
+      ifelse opinion > 0.5 [
+        ; If opinion is above 0.5, increase it towards 1
+        set opinion opinion + (1 - opinion) * opinion-extremity-increase
+      ][
+        ; If opinion is 0.5 or below, decrease it towards 0
+        set opinion opinion - opinion * opinion-extremity-increase
+      ]
+
+      ; Ensure opinion remains between 0 and 1
+      if opinion > 1 [ set opinion 1 ]
+      if opinion < 0 [ set opinion 0 ]
+
+      ; Death probability increases with age
+      let death-probability base-death-rate + (age / max-age) * age-death-factor
+      if random-float 1 < death-probability [
+        set total-deaths total-deaths + 1
+        set deaths-this-ageing deaths-this-ageing + 1
+        die
+      ]
     ]
   ]
-  ; Update tick count and record data
-  set tick-count tick-count + 1
-  ; Record polarisation measures
-  record-polarisation
-  ; Refresh plots automatically
-  update-plots
-  ; Plot population size, births, and deaths
-  set-current-plot "Population Size"
-  plot count turtles
-  set-current-plot "Total Births"
-  plot total-births
-  set-current-plot "Total Deaths"
-  plot total-deaths
 
-  if ticks mod 100 = 0 [
-    show (word "Current opinions at tick " ticks ": " (sort [opinion] of turtles))
+  ; Handle births
+  let current_population count turtles
+  let births round (birth-rate * (carrying-capacity - current_population))
+  if births > 0 [
+    create-turtles births [
+      initialize-turtle true  ; True because it's birth
+    ]
+    set total-births total-births + births
+    set births-this-ageing births-this-ageing + births
   ]
-  tick
+
+  ; Adjust birth rate dynamically based on proportion of young agents
+  adjust-birth-rate
 end
 
 ; Procedure to compute group similarity between two agents
@@ -223,12 +319,42 @@ to record-polarisation
   set-current-plot "Opinion Distribution"
   histogram [opinion] of turtles
 end
+
+; Procedure to adjust birth rate based on the proportion of young agents (age <10)
+to adjust-birth-rate
+  let young count turtles with [age < 10]
+  let total count turtles
+  ifelse total > 0 [
+    let young_ratio (young / total)
+
+    ; Define the threshold for young_ratio to adjust birth rate
+    let threshold 0.2  ; 15% threshold
+
+    ; Define lower and normal birth rates
+    let lower_birth_rate 0.1
+    let normal_birth_rate 0.2
+
+    ; Implement gradual adjustment
+    ifelse young_ratio > threshold [
+      ; Linearly decrease birth rate as young_ratio increases beyond threshold
+      let excess_ratio young_ratio - threshold
+      set birth-rate max list lower_birth_rate (normal_birth_rate - excess_ratio)
+    ][
+      ; Linearly increase birth rate as young_ratio decreases below threshold
+      let deficit_ratio threshold - young_ratio
+      set birth-rate min list normal_birth_rate (lower_birth_rate + deficit_ratio)
+    ]
+  ][
+    ; If no turtles, set birth-rate to normal
+    set birth-rate 0.25
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-1194
-275
-1243
-305
+1231
+43
+1280
+73
 -1
 -1
 1.0
@@ -286,25 +412,25 @@ NIL
 1
 
 SLIDER
-29
-124
-257
-157
+26
+130
+254
+163
 num-agents
 num-agents
 10
 1000
-313.0
+950.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-27
-352
-258
-385
+25
+705
+256
+738
 alpha0
 alpha0
 0
@@ -316,30 +442,30 @@ NIL
 HORIZONTAL
 
 SLIDER
-28
-198
-257
-231
+26
+243
+255
+276
 bubble-size
 bubble-size
 1
 100
-10.0
+40.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-263
-124
-492
-157
+26
+168
+255
+201
 max-ticks
 max-ticks
 100
 100000
-17920.0
+100000.0
 10
 1
 NIL
@@ -418,10 +544,10 @@ PENS
 "current" 1.0 1 -14439633 true "" "histogram [ opinion ] of turtles"
 
 SLIDER
-263
-197
-490
-230
+261
+242
+488
+275
 num-groups
 num-groups
 2
@@ -433,10 +559,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-27
-392
-258
-425
+25
+745
+256
+778
 gamma0
 gamma0
 0
@@ -448,10 +574,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-265
-390
-437
-423
+263
+743
+491
+776
 gamma1
 gamma1
 -5
@@ -463,10 +589,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-265
-350
-493
-383
+263
+703
+491
+736
 alpha1
 alpha1
 -1
@@ -521,67 +647,67 @@ Model Dynamics
 1
 
 TEXTBOX
-29
-332
-240
-352
+27
+685
+238
+705
 Opinion Influence Parameters
 14
 0.0
 1
 
 TEXTBOX
-32
+28
+221
 178
-182
-196
-Simulation Settings
+239
+Group Settings
 14
 0.0
 1
 
 SWITCH
-28
-237
-256
-270
+26
+282
+254
+315
 multiple-group-membership?
 multiple-group-membership?
-1
-1
--1000
-
-SWITCH
-264
-237
-492
-270
-binary-group-membership?
-binary-group-membership?
 0
 1
 -1000
 
+SWITCH
+262
+282
+490
+315
+binary-group-membership?
+binary-group-membership?
+1
+1
+-1000
+
 SLIDER
-28
-276
-255
-309
+26
+321
+253
+354
 avg-num-groups-per-agent
 avg-num-groups-per-agent
 1
 10
-1.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-26
-431
-259
-464
+24
+784
+257
+817
 alpha2
 alpha2
 0
@@ -593,103 +719,215 @@ NIL
 HORIZONTAL
 
 SLIDER
-263
-276
-493
-309
+261
+321
+491
+354
 sd-num-groups-per-agent
 sd-num-groups-per-agent
 1
 5
-1.0
+2.0
 1
 1
 NIL
 HORIZONTAL
+
+SLIDER
+260
+130
+490
+163
+carrying-capacity
+carrying-capacity
+0
+2000
+1000.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+32
+377
+182
+395
+Agent Ageing
+14
+0.0
+1
 
 SLIDER
 27
-470
-258
-503
-birth-rate
-birth-rate
-0
-0.1
-0.01
-0.001
+398
+252
+431
+ageing-interval
+ageing-interval
+50
+1000
+500.0
+50
 1
 NIL
 HORIZONTAL
 
 SLIDER
-263
+259
+398
+484
+431
+max-age
+max-age
+50
+100
+65.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+28
+438
+252
+471
+base-death-rate
+base-death-rate
+0
+0.0005
+2.0E-4
+0.0001
+1
+NIL
+HORIZONTAL
+
+SLIDER
+259
+437
+485
 470
-493
-503
-death-rate
-death-rate
+age-death-factor
+age-death-factor
+0
+0.1
+0.02
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+28
+476
+253
+509
+group-strength-increase
+group-strength-increase
+0
+0.1
+0.02
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+260
+476
+486
+509
+opinion-extremity-increase
+opinion-extremity-increase
 0
 0.1
 0.01
-0.001
+0.01
 1
 NIL
 HORIZONTAL
 
 PLOT
-543
-650
-754
-800
-Population Size
-Ticks
-Population Size
-0.0
-10.0
-0.0
-1000.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -3844592 true "" "plot count turtles"
-
-PLOT
 762
-650
-969
-800
-Total Births
-Ticks
-Total Births
+634
+971
+784
+Age Distribution
+Age
+Number of Users
 0.0
-10.0
+100.0
 0.0
-1000.0
+200.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -3844592 true "" "plot total-births"
+"default" 10.0 1 -16777216 true "" "histogram [ age ] of turtles"
 
 PLOT
-543
-820
-754
-970
-Total Deaths
-Ticks
-Total Deaths
+544
+633
+757
+783
+Births and Deaths
+NIL
+NIL
 0.0
 10.0
 0.0
-1000.0
+10.0
+true
+true
+"" ""
+PENS
+"Births" 1.0 0 -15040220 true "" ""
+"Deaths" 1.0 0 -8053223 true "" ""
+
+PLOT
+983
+634
+1183
+784
+Population Size
+Time
+Population Size
+0.0
+10.0
+0.0
+10.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -3844592 true "" "plot total-deaths"
+"default" 1.0 0 -16777216 true "" "plot count turtles"
+
+SLIDER
+260
+524
+487
+557
+birth-rate
+birth-rate
+0
+0.2
+0.10791618160651922
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+89
+538
+239
+556
+Dynamic Parameter
+11
+0.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
