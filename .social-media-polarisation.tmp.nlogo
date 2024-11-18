@@ -3,9 +3,11 @@ globals [
   spread-list           ; List to store spread over time
   dispersion-list       ; List to store dispersion over time
   coverage-list         ; List to store coverage over time
+  entropy-list          ; List to store entropy over time
   spread                ; Current spread calculation
   dispersion            ; Current dispersion calculation
   coverage              ; Current coverage calculation
+  entropy               ; Current entropy calculation
   total-births          ; Total number of births
   total-deaths          ; Total number of deaths
   births-this-ageing    ; Births during the current ageing interval
@@ -52,17 +54,19 @@ to setup
   set deaths-this-ageing 0
 
   create-turtles num-agents [
-    initialize-turtle false  ; False because it's setup
+    initialise-turtle false  ; False because it's setup
   ]
 
-  ; Initialize global variables
+  ; Initialise global variables
   set tick-count 0
   set spread-list []
   set dispersion-list []
   set coverage-list []
+  set entropy-list []
   set spread 0
   set dispersion 0
   set coverage 0
+  set entropy 0
 
   ; Setup plot with specific number of bins for the histogram
   set-current-plot "Opinion Distribution"
@@ -71,9 +75,9 @@ to setup
   reset-ticks
 end
 
-; Procedure to initialize a turtle (used in setup and when new turtles are born)
+; Procedure to initialise a turtle (used in setup and when new turtles are born)
 ; @param is_birth: boolean flag, true if called during birth, false if called during setup
-to initialize-turtle [is_birth]
+to initialise-turtle [is_birth]
   ifelse is_birth [
     set age 0  ; Newborn turtles start at age 0
     ; Inherit opinion from a random existing turtle with slight noise
@@ -88,13 +92,13 @@ to initialize-turtle [is_birth]
       set opinion random-float 1
     ]
   ][
-    ; Initialize age from a uniform distribution between 0 and max-age
+    ; Initialise age from a uniform distribution between 0 and max-age
     set age round (random-float max-age)
-    ; Initialize opinion randomly for initial population
+    ; Initialise opinion randomly for initial population
     set opinion random-float 1
   ]
 
-  ; Initialize group-strengths
+  ; Initialise group-strengths
   set group-strengths n-values num-groups [ 0 ]
 
   ifelse multiple-group-membership? [
@@ -261,7 +265,7 @@ to agent-ageing
   let births round (birth-rate * (carrying-capacity - current_population))
   if births > 0 [
     create-turtles births [
-      initialize-turtle true  ; True because it's birth
+      initialise-turtle true  ; True because it's birth
     ]
     set total-births total-births + births
     set births-this-ageing births-this-ageing + births
@@ -300,6 +304,13 @@ to record-polarisation
   ; Bucketing opinions into intervals (e.g., 0.0-0.1, 0.1-0.2, ...)
   let buckets map [x -> floor (x * 100) / 100] opinions  ; Adjust bucket size by changing the multiplier/divisor
   let unique-buckets remove-duplicates buckets
+  let bucket-counts map [b -> count turtles with [floor (opinion * 10) / 10 = b]] unique-buckets
+  let total-turtles count turtles
+  let entropies (map [p -> ifelse-value (p > 0) [(- p / total-turtles) * ln (p / total-turtles)] [0]] bucket-counts)
+
+  ; Calculate entropy
+  set entropy sum entropies
+  set entropy-list lput entropy entropy-list
 
   ; Coverage calculation adjusted for bucketing
   set coverage (length unique-buckets) / 100  ; Assuming 100 buckets (0 to 1 in 0.01 increments)
@@ -310,6 +321,8 @@ to record-polarisation
   set coverage-list lput coverage coverage-list
 
   ; Plot the measures
+  set-current-plot "Entropy"
+  plot entropy
   set-current-plot "Spread"
   plot spread
   set-current-plot "Dispersion"
@@ -604,10 +617,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-763
-477
-971
-522
+977
+117
+1185
+162
 Current Spread
 spread
 17
@@ -615,10 +628,10 @@ spread
 11
 
 MONITOR
-763
-522
-971
-567
+977
+162
+1185
+207
 Current Dispersion
 dispersion
 17
@@ -626,10 +639,10 @@ dispersion
 11
 
 MONITOR
-763
-568
-972
-613
+977
+208
+1186
+253
 Current Coverage
 coverage
 17
@@ -904,29 +917,47 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles"
 
 SLIDER
-260
-524
-487
-557
+28
+540
+255
+573
 birth-rate
 birth-rate
 0
 0.2
-0.10791618160651922
+0.17975528364849835
 0.01
 1
 NIL
 HORIZONTAL
 
 TEXTBOX
-89
-538
-239
-556
-Dynamic Parameter
+33
+526
+219
+554
+Dynamic Parameter. Do not touch.
 11
 0.0
 1
+
+PLOT
+763
+476
+963
+626
+Entropy
+NIL
+NIL
+0.0
+10.0
+0.0
+3.0
+true
+false
+"" ""
+PENS
+"Entropy Pen" 1.0 0 -8053223 true "" "plot entropy"
 
 @#$#@#$#@
 ## WHAT IS IT?
