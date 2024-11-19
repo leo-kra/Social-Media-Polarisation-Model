@@ -19,6 +19,7 @@ turtles-own [
   opinion-difference    ; Temporary variable to store opinion difference
   group-strengths       ; List of group strengths
   age                   ; Age of the agent
+  status                ; "online" or "offline"
 ]
 
 ; Setup procedure
@@ -131,6 +132,29 @@ to initialise-turtle [is_birth]
       set group-strengths replace-item index group-strengths random-float 1
     ]
   ]
+
+  ; Assign status
+  ifelse random-float 1 < (online-agent-percentage / 100) [
+    set status "online"
+    set color green  ; Example: online agents green
+  ][
+    set status "offline"
+    set color red    ; Example: offline agents red
+  ]
+
+  ; Set initial position
+  setxy random-xcor random-ycor
+
+  ; Visual distinction (optional)
+  ifelse status = "online" [
+    set shape "circle"
+    set color green
+  ][
+    set shape "square"
+    set color red
+  ]
+
+  ; Set turtle size
   set size 1.5
 end
 
@@ -138,8 +162,8 @@ end
 to go
   if ticks >= max-ticks [ stop ]
 
-  ; Agent interactions occur every tick
-  agent-interactions
+  ; Online agent interactions occur every tick
+  online-agent-interaction
 
   ; Ageing occurs every 'ageing-interval' ticks
   if (ticks mod ageing-interval = 0) [
@@ -151,6 +175,11 @@ to go
     plot births-this-ageing
     set-current-plot-pen "Deaths"
     plot deaths-this-ageing
+  ]
+
+  if (ticks mod offline-interaction-interval = 0) [
+    agent-movement
+    physical-interactions
   ]
 
   ; Update tick count and record data
@@ -173,8 +202,64 @@ to go
   tick
 end
 
+to agent-movement
+  ask turtles [
+    right random 360  ; Turn in a random direction
+    forward movement-distance  ; Move forward by the specified distance
+  ]
+end
+
+
+
+; Procedure for physical interactions
+to physical-interactions
+  ; For all agents (online and offline)
+  ask turtles [
+    ; Receiver is self
+    let receiver self
+    ; Find nearby agents within a certain radius
+    let nearby-agents turtles in-radius interaction-radius with [self != receiver]
+    ; If there are nearby agents
+    if any? nearby-agents [
+      ; Pick a random sender from nearby agents
+      let sender one-of nearby-agents
+      ; Perform interaction
+      offline-agent-interaction receiver sender
+    ]
+  ]
+end
+
+
+; Procedure for offline agent interactions between a specific receiver and sender
+to offline-agent-interaction [receiver sender]
+  ; Compute opinion difference between sender and receiver
+  let delta ([opinion] of sender - [opinion] of receiver)
+  let delta_abs abs delta
+  ; Compute group similarity delta_eij
+  let delta_eij group-similarity receiver sender
+  let one_minus_delta_eij 1 - delta_eij
+  ; Compute influence weight w_ijt
+  let w_ijt 1 - gamma0 * delta_abs + gamma1 * one_minus_delta_eij * delta_abs
+  ; Ensure w_ijt is between -1 and 1
+  if w_ijt > 1 [ set w_ijt 1 ]
+  if w_ijt < -1 [ set w_ijt -1 ]
+  ; Compute s_i
+  let s_i mean [group-strengths] of receiver
+  ; Compute total alpha
+  let total_alpha alpha0 + alpha1 * delta_eij + alpha2 * s_i
+  ; Update receiver's opinion
+  let delta_opinion total_alpha * w_ijt * delta
+  ask receiver [
+    set opinion opinion + delta_opinion
+    ; Truncate opinion to [0,1]
+    if opinion > 1 [ set opinion 1 ]
+    if opinion < 0 [ set opinion 0 ]
+  ]
+end
+
+
 ; Procedure for agent interactions
-to agent-interactions
+to online-agent-interaction
   ; Select a random receiver
   let receiver one-of turtles
   ; Determine bubble size (as a number of agents)
@@ -362,15 +447,30 @@ to adjust-birth-rate
     set birth-rate 0.25
   ]
 end
+
+; Reports the total number of turtles
+to-report total-agents
+  report count turtles
+end
+
+; Reports the number of offline turtles
+to-report offline-agents
+  report count turtles with [status = "offline"]
+end
+
+; Reports the number of online turtles
+to-report online-agents
+  report count turtles with [status = "online"]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-1231
-43
-1280
-73
+1211
+116
+1873
+779
 -1
 -1
-1.0
+6.48
 1
 10
 1
@@ -380,15 +480,15 @@ GRAPHICS-WINDOW
 1
 1
 1
--20
-20
--10
-10
+-50
+50
+-50
+50
 0
 0
 1
 ticks
-30.0
+600.0
 
 BUTTON
 33
@@ -433,17 +533,17 @@ num-agents
 num-agents
 10
 1000
-950.0
+325.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-25
-705
-256
-738
+26
+728
+251
+761
 alpha0
 alpha0
 0
@@ -463,7 +563,7 @@ bubble-size
 bubble-size
 1
 100
-40.0
+30.0
 1
 1
 NIL
@@ -565,17 +665,17 @@ num-groups
 num-groups
 2
 10
-8.0
+7.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-25
-745
-256
-778
+26
+767
+251
+800
 gamma0
 gamma0
 0
@@ -587,25 +687,25 @@ NIL
 HORIZONTAL
 
 SLIDER
-263
-743
-491
-776
+258
+767
+486
+800
 gamma1
 gamma1
 -5
 5
-0.49
+0.52
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-263
-703
-491
-736
+258
+728
+486
+761
 alpha1
 alpha1
 -1
@@ -620,50 +720,50 @@ MONITOR
 977
 117
 1185
-162
+174
 Current Spread
 spread
-17
+2
 1
-11
+14
 
 MONITOR
-977
-162
-1185
-207
+978
+185
+1186
+242
 Current Dispersion
 dispersion
-17
+2
 1
-11
+14
 
 MONITOR
 977
-208
+252
 1186
-253
+309
 Current Coverage
 coverage
-17
+2
 1
-11
+14
 
 TEXTBOX
-33
-100
-183
-118
+29
+109
+179
+127
 Model Dynamics
 14
 0.0
 1
 
 TEXTBOX
-27
-685
-238
-705
+29
+710
+240
+730
 Opinion Influence Parameters
 14
 0.0
@@ -717,10 +817,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-24
-784
-257
-817
+26
+807
+252
+840
 alpha2
 alpha2
 0
@@ -740,7 +840,7 @@ sd-num-groups-per-agent
 sd-num-groups-per-agent
 1
 5
-2.0
+1.0
 1
 1
 NIL
@@ -755,7 +855,7 @@ carrying-capacity
 carrying-capacity
 0
 2000
-1000.0
+330.0
 1
 1
 NIL
@@ -780,7 +880,7 @@ ageing-interval
 ageing-interval
 50
 1000
-500.0
+300.0
 50
 1
 NIL
@@ -795,7 +895,7 @@ max-age
 max-age
 50
 100
-65.0
+95.0
 1
 1
 NIL
@@ -840,7 +940,7 @@ group-strength-increase
 group-strength-increase
 0
 0.1
-0.02
+0.01
 0.01
 1
 NIL
@@ -855,7 +955,7 @@ opinion-extremity-increase
 opinion-extremity-increase
 0
 0.1
-0.01
+0.02
 0.01
 1
 NIL
@@ -872,7 +972,7 @@ Number of Users
 0.0
 100.0
 0.0
-200.0
+10.0
 true
 false
 "" ""
@@ -925,7 +1025,7 @@ birth-rate
 birth-rate
 0
 0.2
-0.17975528364849835
+0.1
 0.01
 1
 NIL
@@ -934,9 +1034,9 @@ HORIZONTAL
 TEXTBOX
 33
 526
-219
+236
 554
-Dynamic Parameter. Do not touch.
+Dynamically Assigned. Do not touch.
 11
 0.0
 1
@@ -944,7 +1044,7 @@ Dynamic Parameter. Do not touch.
 PLOT
 763
 476
-963
+971
 626
 Entropy
 NIL
@@ -957,7 +1057,110 @@ true
 false
 "" ""
 PENS
-"Entropy Pen" 1.0 0 -8053223 true "" "plot entropy"
+"Entropy Pen" 1.0 0 -3844592 true "" "plot entropy"
+
+TEXTBOX
+33
+595
+183
+613
+Online/Offline Setup
+14
+0.0
+1
+
+SLIDER
+258
+616
+483
+649
+online-agent-percentage
+online-agent-percentage
+0
+100
+90.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+29
+615
+251
+648
+offline-interaction-interval
+offline-interaction-interval
+0
+500
+29.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+29
+654
+251
+687
+interaction-radius
+interaction-radius
+0
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+259
+654
+484
+687
+movement-distance
+movement-distance
+0
+10
+2.0
+0.1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+979
+386
+1185
+443
+No. of Online Agents
+online-agents
+0
+1
+14
+
+MONITOR
+977
+321
+1185
+378
+No. of Offline Agents
+offline-agents
+0
+1
+14
+
+MONITOR
+980
+450
+1185
+507
+Total No. of Agents
+total-agents
+0
+1
+14
 
 @#$#@#$#@
 ## WHAT IS IT?
