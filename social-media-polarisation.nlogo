@@ -464,13 +464,13 @@ to-report online-agents
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-1211
-116
-1873
-779
+1156
+126
+1695
+666
 -1
 -1
-6.48
+5.26
 1
 10
 1
@@ -491,10 +491,10 @@ ticks
 600.0
 
 BUTTON
-33
-16
-99
-49
+1158
+683
+1224
+716
 NIL
 setup
 NIL
@@ -508,10 +508,10 @@ NIL
 1
 
 BUTTON
-114
-17
-177
-50
+1239
+684
+1302
+717
 NIL
 go
 T
@@ -585,10 +585,10 @@ NIL
 HORIZONTAL
 
 PLOT
-543
-476
-754
-626
+498
+487
+709
+637
 Spread
 Ticks
 Spread
@@ -603,10 +603,10 @@ PENS
 "default" 1.0 0 -3844592 true "" "plot spread"
 
 PLOT
-762
-319
-969
-469
+717
+330
+924
+480
 Dispersion
 Ticks
 Dispersion
@@ -621,10 +621,10 @@ PENS
 "Dispersion Pen" 1.0 0 -3844592 true "" "plot dispersion"
 
 PLOT
-543
-319
-754
-469
+498
+330
+709
+480
 Coverage
 Ticks
 Coverage
@@ -639,10 +639,10 @@ PENS
 "Coverage Pen" 1.0 0 -3844592 true "" "plot coverage"
 
 PLOT
-543
-118
-969
-311
+498
+129
+924
+322
 Opinion Distribution
 Opinion
 Number of Users
@@ -665,7 +665,7 @@ num-groups
 num-groups
 2
 10
-7.0
+10.0
 1
 1
 NIL
@@ -717,10 +717,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-977
-117
-1185
-174
+932
+128
+1140
+185
 Current Spread
 spread
 2
@@ -728,10 +728,10 @@ spread
 14
 
 MONITOR
-978
-185
-1186
-242
+933
+196
+1141
+253
 Current Dispersion
 dispersion
 2
@@ -739,10 +739,10 @@ dispersion
 14
 
 MONITOR
-977
-252
-1186
-309
+932
+263
+1141
+320
 Current Coverage
 coverage
 2
@@ -855,7 +855,7 @@ carrying-capacity
 carrying-capacity
 0
 2000
-330.0
+340.0
 1
 1
 NIL
@@ -955,17 +955,17 @@ opinion-extremity-increase
 opinion-extremity-increase
 0
 0.1
-0.02
+0.01
 0.01
 1
 NIL
 HORIZONTAL
 
 PLOT
-762
-634
-971
-784
+717
+645
+926
+795
 Age Distribution
 Age
 Number of Users
@@ -980,10 +980,10 @@ PENS
 "default" 10.0 1 -16777216 true "" "histogram [ age ] of turtles"
 
 PLOT
-544
-633
-757
-783
+499
+644
+712
+794
 Births and Deaths
 NIL
 NIL
@@ -999,10 +999,10 @@ PENS
 "Deaths" 1.0 0 -8053223 true "" ""
 
 PLOT
-983
-634
-1183
-784
+938
+645
+1138
+795
 Population Size
 Time
 Population Size
@@ -1025,7 +1025,7 @@ birth-rate
 birth-rate
 0
 0.2
-0.1481848184818482
+0.10612244897959186
 0.01
 1
 NIL
@@ -1042,10 +1042,10 @@ Dynamically Assigned. Do not touch.
 1
 
 PLOT
-763
-476
-971
-626
+718
+487
+926
+637
 Entropy
 NIL
 NIL
@@ -1078,7 +1078,7 @@ online-agent-percentage
 online-agent-percentage
 0
 100
-90.0
+94.0
 1
 1
 NIL
@@ -1123,17 +1123,17 @@ movement-distance
 movement-distance
 0
 10
-2.0
+2.1
 0.1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-979
-386
-1185
-443
+934
+397
+1140
+454
 No. of Online Agents
 online-agents
 0
@@ -1141,10 +1141,10 @@ online-agents
 14
 
 MONITOR
-977
-321
-1185
-378
+932
+332
+1140
+389
 No. of Offline Agents
 offline-agents
 0
@@ -1152,10 +1152,10 @@ offline-agents
 14
 
 MONITOR
-979
-450
-1185
-507
+934
+461
+1140
+518
 Total No. of Agents
 total-agents
 0
