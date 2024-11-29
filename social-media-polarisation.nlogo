@@ -533,7 +533,7 @@ num-agents
 num-agents
 10
 1000
-325.0
+350.0
 1
 1
 NIL
@@ -548,7 +548,7 @@ alpha0
 alpha0
 0
 1
-0.58
+0.2
 0.01
 1
 NIL
@@ -563,7 +563,7 @@ bubble-size
 bubble-size
 1
 100
-30.0
+25.0
 1
 1
 NIL
@@ -578,7 +578,7 @@ max-ticks
 max-ticks
 100
 100000
-100000.0
+5000.0
 10
 1
 NIL
@@ -665,7 +665,7 @@ num-groups
 num-groups
 2
 10
-10.0
+6.0
 1
 1
 NIL
@@ -680,7 +680,7 @@ gamma0
 gamma0
 0
 5
-2.32
+1.5
 0.01
 1
 NIL
@@ -695,7 +695,7 @@ gamma1
 gamma1
 -5
 5
-0.52
+-0.5
 0.01
 1
 NIL
@@ -710,7 +710,7 @@ alpha1
 alpha1
 -1
 1
-1.0
+0.5
 0.01
 1
 NIL
@@ -810,7 +810,7 @@ avg-num-groups-per-agent
 avg-num-groups-per-agent
 1
 10
-3.0
+2.0
 1
 1
 NIL
@@ -825,7 +825,7 @@ alpha2
 alpha2
 0
 1
-0.5
+0.3
 0.1
 1
 NIL
@@ -855,7 +855,7 @@ carrying-capacity
 carrying-capacity
 0
 2000
-340.0
+375.0
 1
 1
 NIL
@@ -895,7 +895,7 @@ max-age
 max-age
 50
 100
-95.0
+100.0
 1
 1
 NIL
@@ -939,8 +939,8 @@ SLIDER
 group-strength-increase
 group-strength-increase
 0
-0.1
-0.01
+0.15
+0.05
 0.01
 1
 NIL
@@ -1025,7 +1025,7 @@ birth-rate
 birth-rate
 0
 0.2
-0.10612244897959186
+0.10654761904761906
 0.01
 1
 NIL
@@ -1078,7 +1078,7 @@ online-agent-percentage
 online-agent-percentage
 0
 100
-94.0
+90.0
 1
 1
 NIL
@@ -1093,7 +1093,7 @@ offline-interaction-interval
 offline-interaction-interval
 0
 500
-29.0
+50.0
 1
 1
 NIL
@@ -1123,7 +1123,7 @@ movement-distance
 movement-distance
 0
 10
-2.1
+1.0
 0.1
 1
 NIL
@@ -1508,6 +1508,89 @@ NetLogo 6.4.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="Experiment 1.0" repetitions="5" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="5000"/>
+    <metric>[opinion] of turtles</metric>
+    <enumeratedValueSet variable="avg-num-groups-per-agent">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="sd-num-groups-per-agent">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="group-strength-increase">
+      <value value="0.05"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="gamma0">
+      <value value="1.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="gamma1">
+      <value value="-0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-agents">
+      <value value="350"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="base-death-rate">
+      <value value="2.0E-4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bubble-size">
+      <value value="25"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-ticks">
+      <value value="5000"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="binary-group-membership?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alpha0">
+      <value value="0.2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="carrying-capacity">
+      <value value="375"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="ageing-interval">
+      <value value="300"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alpha1">
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="movement-distance">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="online-agent-percentage">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-groups">
+      <value value="6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="opinion-extremity-increase">
+      <value value="0.01"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alpha2">
+      <value value="0.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="max-age">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="multiple-group-membership?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="offline-interaction-interval">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="birth-rate">
+      <value value="0.15739644970414204"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="interaction-radius">
+      <value value="1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="age-death-factor">
+      <value value="0.02"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
