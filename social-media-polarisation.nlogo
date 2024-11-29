@@ -1165,39 +1165,44 @@ total-agents
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+We simulate the dynamics of opinion formation within a population of agents, exploring how different interaction modalities (online and offline) affect opinion spread, polarisation, and consensus formation. It shows how social interactions within distinct communication channels can impact overall societal viewpoints.
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+Agents have opinions ranging from 0 (completely disagree) to 1 (completely agree) and can either be online or offline. Online interactions are influenced by a 'bubble-size' parameter, which dictates how agents are exposed to similar or dissimilar opinions, mimicking echo chambers in social media. Offline interactions are limited by a spatial range, representing physical community interactions. Agents age, and their likelihood of dying increases, influencing opinion dynamics through generational changes.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+- **Setup Button**: Initialises the simulation, creating agents with random opinions and assigning them randomly to either online or offline status.
+- **Go Button**: Starts the simulation where agents interact, age, and potentially die or give birth, according to the model rules.
+- **Sliders**: Control parameters such as the number of agents, the percentage of online agents, interaction radii, and the bubble-size.
+- **Monitors**: Display real-time statistics such as the number of agents alive, average opinion, and the degree of polarisation.
+- **Plots**: Show how opinions are distributed across the agent population and track changes over time.
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+Observe how changes in the bubble-size affect the speed and pattern of opinion convergence or divergence. Notice the role of the proportion of online agents in speeding up or slowing down the spread of opinions.
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+- Vary the bubble-size to see its effect on echo chambers.
+- Change the percentage of online agents to test its impact on the rapidity and pattern of opinion changes.
+- Adjust the frequency of offline interactions to explore their impact compared to online interactions.
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+- Add varying degrees of persuasiveness or influence to agents based on their attributes like credibility or social status.
+- Implement an external media influence that periodically affects all or a subset of agents.
+- Explore different initial distributions of opinions, such as polarised groups or a central consensus.
 
 ## NETLOGO FEATURES
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+This model makes use of NetLogo's abilities to handle a large number of agents efficiently, dynamically update agent states, and visually represent complex agent interactions and changes over time. Custom sliders and monitors enhance user interaction and control over the simulation parameters.
 
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+This model is an extension to the model in Keijzer et al. [2024]. We reimplemented their model and added new features such as online and offline agents, agent ageing and affective polarisation.
 @#$#@#$#@
 default
 true
