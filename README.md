@@ -37,6 +37,7 @@ Our project addresses the following questions:
 ## Further Reading
 Access our full paper [here](https://github.com/t3rryhuang/Social-Media-Polarisation-Model/blob/main/report.pdf) for a detailed discussion of our model's inspiration, implementation and findings.
 
+## Our Model Interface
 ![Model Screenshot](https://github.com/t3rryhuang/Social-Media-Polarisation-Model/blob/main/model-screenshot.png?raw=true)
 
 ## Citation
